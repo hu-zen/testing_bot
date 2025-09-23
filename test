@@ -1,1 +1,80 @@
-Test
+//=============================Motor Controll with Smooth Deceleration=====================================
+// Versi Final - Menambahkan deselerasi bertahap saat berhenti
+//=========================================================================================================
+
+#include <Servo.h>
+#include <HB25MotorControl.h>
+#include <ros.h>
+#include <geometry_msgs/Twist.h>
+
+const byte controlPinL = 6;  // Pin for left motor
+const byte controlPinR = 7;  // Pin for right motor
+
+HB25MotorControl motorControlL(controlPinL);
+HB25MotorControl motorControlR(controlPinR);
+
+ros::NodeHandle nh;
+
+// --- BAGIAN BARU 1: Menambahkan "Memori" Kecepatan ---
+// Variabel ini kita tambahkan untuk mengingat kecepatan terakhir yang dikirim ke motor.
+int current_left_speed = 0;
+int current_right_speed = 0;
+
+void twistCallback(const geometry_msgs::Twist& twist_msg) {
+  // --- Bagian Asli: Kalkulasi Kecepatan Target (Tidak Diubah) ---
+  int linear_speed = (int)(twist_msg.linear.x * 300);
+  int angular_speed = (int)(twist_msg.angular.z * 300);
+  int left_speed = linear_speed - angular_speed;
+  int right_speed = linear_speed + angular_speed;
+
+  left_speed = constrain(left_speed, -500, 500);
+  right_speed = constrain(right_speed, -500, 500);
+
+  // --- BAGIAN YANG DIUBAH: Logika Deselerasi ---
+
+  // Logika untuk motor KIRI
+  if (left_speed == 0 && current_left_speed != 0) {
+    // Jika perintah baru adalah BERHENTI dan motor SEDANG BERGERAK...
+    int step = (current_left_speed > 0) ? -1 : 1; // Menurunkan nilai menuju 0
+    for (int pwm = current_left_speed; pwm != 0; pwm += step) {
+      motorControlL.moveAtSpeed(pwm);
+      delay(5); // Jeda singkat untuk memperhalus. Anda bisa tuning nilai ini.
+    }
+    motorControlL.moveAtSpeed(0); // Memastikan motor benar-benar berhenti
+  } else {
+    // Jika tidak (akselerasi atau ganti kecepatan), langsung jalankan.
+    motorControlL.moveAtSpeed(left_speed);
+  }
+
+  // Logika untuk motor KANAN
+  if (right_speed == 0 && current_right_speed != 0) {
+    int step = (current_right_speed > 0) ? -1 : 1;
+    for (int pwm = current_right_speed; pwm != 0; pwm += step) {
+      motorControlR.moveAtSpeed(pwm);
+      delay(5);
+    }
+    motorControlR.moveAtSpeed(0);
+  } else {
+    motorControlR.moveAtSpeed(right_speed);
+  }
+
+  // --- BAGIAN BARU 2: Update "Memori" Kecepatan ---
+  // Setelah semua logika selesai, simpan kecepatan terakhir untuk siklus berikutnya.
+  current_left_speed = left_speed;
+  current_right_speed = right_speed;
+}
+
+ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &twistCallback);
+
+void setup() {
+  nh.getHardware()->setBaud(115200);
+  nh.initNode();
+  nh.subscribe(sub);
+
+  motorControlL.begin();
+  motorControlR.begin();
+}
+
+void loop() {
+  nh.spinOnce();
+}
