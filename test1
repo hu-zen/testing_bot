@@ -1,0 +1,113 @@
+//=============================Motor Controll with Advanced Smoothing & Calibration===============================
+// Versi 3.0 - Dirancang untuk Joystick dan Navigasi Otomatis
+// Fitur:
+// 1. Akselerasi/deselerasi non-blocking yang dinamis.
+// 2. Timeout untuk mencegah "sticky turning".
+// 3. Kalibrasi motor untuk gerakan lurus.
+//==============================================================================================================
+
+#include <Servo.h>
+#include <HB25MotorControl.h>
+#include <ros.h>
+#include <geometry_msgs/Twist.h>
+
+const byte controlPinL = 6;
+const byte controlPinR = 7;
+
+HB25MotorControl motorControlL(controlPinL);
+HB25MotorControl motorControlR(controlPinR);
+
+ros::NodeHandle nh;
+
+// --- Variabel untuk kontrol kecepatan ---
+int target_left_speed = 0;   // Kecepatan target dari ROS
+int target_right_speed = 0;
+int current_left_speed = 0;  // Kecepatan aktual yang dikirim ke motor
+int current_right_speed = 0;
+
+// --- Variabel untuk timing non-blocking ---
+unsigned long lastUpdateTime = 0;
+const int update_interval = 10; // Perbarui kecepatan setiap 10ms (100Hz), lebih responsif
+
+//===============================================================================
+// --- Variabel BARU untuk Tuning (Sesuaikan nilai ini sesuai kebutuhan) ---
+//===============================================================================
+// 1. Mengatur kecepatan akselerasi/deselerasi. Nilai lebih besar = transisi lebih cepat.
+const int speed_step = 20;
+
+// 2. Faktor kalibrasi untuk motor kanan.
+//    Jika robot belok ke KIRI saat maju, KECILKAN nilai ini (misal 0.94).
+//    Jika robot belok ke KANAN saat maju, BESARKAN nilai ini (misal 0.96).
+const float right_motor_trim = 0.95; // Nilai ini didasarkan pada pengamatan Anda sebelumnya, sesuaikan jika perlu
+
+// 3. Timeout untuk perintah. Jika tidak ada pesan baru selama 250ms, robot akan berhenti.
+//    Ini untuk mengatasi masalah "berbelok terus".
+unsigned long lastCmdVelTime = 0;
+const int cmd_vel_timeout = 250; // dalam milidetik
+//===============================================================================
+
+
+// --- Callback Function ---
+// Fungsi ini hanya menyimpan kecepatan target dari ROS dan mereset timer timeout.
+void twistCallback(const geometry_msgs::Twist& twist_msg) {
+  lastCmdVelTime = millis(); // Reset timer setiap ada perintah baru
+
+  int linear_speed = (int)(twist_msg.linear.x * 300);
+  int angular_speed = (int)(twist_msg.angular.z * 300);
+  
+  target_left_speed = linear_speed - angular_speed;
+  target_right_speed = linear_speed + angular_speed;
+
+  target_left_speed = constrain(target_left_speed, -500, 500);
+  target_right_speed = constrain(target_right_speed, -500, 500);
+}
+
+ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &twistCallback);
+
+void setup() {
+  nh.getHardware()->setBaud(115200);
+  nh.initNode();
+  nh.subscribe(sub);
+
+  motorControlL.begin();
+  motorControlR.begin();
+}
+
+void loop() {
+  // Selalu cek pesan baru dari ROS secepat mungkin
+  nh.spinOnce();
+
+  unsigned long currentTime = millis();
+
+  // --- LOGIKA BARU: Timeout Safety Stop ---
+  // Jika tidak ada perintah baru dari ROS lebih dari waktu timeout, paksa berhenti.
+  if (currentTime - lastCmdVelTime > cmd_vel_timeout) {
+    target_left_speed = 0;
+    target_right_speed = 0;
+  }
+
+  // Cek apakah sudah waktunya untuk mengupdate kecepatan motor
+  if (currentTime - lastUpdateTime >= update_interval) {
+    lastUpdateTime = currentTime;
+
+    // --- LOGIKA BARU: Bergerak menuju target dengan step yang dinamis ---
+    if (current_left_speed < target_left_speed) {
+      current_left_speed = min(current_left_speed + speed_step, target_left_speed);
+    } else if (current_left_speed > target_left_speed) {
+      current_left_speed = max(current_left_speed - speed_step, target_left_speed);
+    }
+
+    if (current_right_speed < target_right_speed) {
+      current_right_speed = min(current_right_speed + speed_step, target_right_speed);
+    } else if (current_right_speed > target_right_speed) {
+      current_right_speed = max(current_right_speed - speed_step, target_right_speed);
+    }
+
+    // --- APLIKASIKAN FAKTOR KOREKSI (TRIM) ---
+    int final_right_speed = (int)(current_right_speed * right_motor_trim);
+
+    // Kirim kecepatan yang sudah dihaluskan dan dikalibrasi ke motor
+    motorControlL.moveAtSpeed(current_left_speed);
+    motorControlR.moveAtSpeed(final_right_speed);
+  }
+}
