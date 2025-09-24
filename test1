@@ -15,8 +15,8 @@ last_ticks_right = 0
 last_time_left = None
 last_ticks_left = 0
 
-# --- BAGIAN BARU: Variabel untuk Filter ---
-# Faktor penghalusan (alpha). Semakin kecil, semakin halus. 0.0 - 1.0
+# --- Variabel untuk Filter Penghalus ---
+# Faktor penghalusan (alpha). Semakin kecil, semakin halus. (0.0 - 1.0)
 smoothing_factor = 0.2 
 smoothed_rpm_right = 0.0
 smoothed_rpm_left = 0.0
@@ -25,7 +25,6 @@ smoothed_rpm_left = 0.0
 # Publisher akan mem-publish data yang sudah dihaluskan
 rpm_right_pub = rospy.Publisher('/rpm/right_wheel_smoothed', Float32, queue_size=10)
 rpm_left_pub = rospy.Publisher('/rpm/left_wheel_smoothed', Float32, queue_size=10)
-
 
 def right_ticks_callback(msg):
     global last_time_right, last_ticks_right, smoothed_rpm_right
@@ -38,17 +37,10 @@ def right_ticks_callback(msg):
         delta_ticks = current_ticks - last_ticks_right
 
         if delta_time > 0:
-            # 1. Hitung RPM mentah (yang bergelombang)
             raw_rpm = (delta_ticks / TICKS_PER_REVOLUTION) / (delta_time / 60.0)
-
-            # 2. Terapkan Exponential Moving Average (EMA) Filter
             smoothed_rpm_right = (smoothing_factor * raw_rpm) + ((1 - smoothing_factor) * smoothed_rpm_right)
-
-            # 3. Publish RPM yang sudah halus
             rpm_right_pub.publish(smoothed_rpm_right)
-
-            rospy.loginfo(f"RPM Right Wheel (Smoothed): {smoothed_rpm_right}")
-
+            
     last_time_right = current_time
     last_ticks_right = current_ticks
 
@@ -66,7 +58,6 @@ def left_ticks_callback(msg):
             raw_rpm = (delta_ticks / TICKS_PER_REVOLUTION) / (delta_time / 60.0)
             smoothed_rpm_left = (smoothing_factor * raw_rpm) + ((1 - smoothing_factor) * smoothed_rpm_left)
             rpm_left_pub.publish(smoothed_rpm_left)
-            rospy.loginfo(f"RPM Left Wheel (Smoothed): {smoothed_rpm_left}")
 
     last_time_left = current_time
     last_ticks_left = current_ticks
