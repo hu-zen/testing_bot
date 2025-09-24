@@ -1,91 +1,79 @@
-//=============================Motor Controll with Intelligent Deceleration===============================
-// Versi Final - Berdasarkan kode asli yang stabil, dengan penambahan deselerasi non-blocking HANYA saat berhenti.
-//======================================================================================================
+#!/usr/bin/env python3
 
-#include <Servo.h>
-#include <HB25MotorControl.h>
-#include <ros.h>
-#include <geometry_msgs/Twist.h>
+import rospy
+from std_msgs.msg import Int16, Float32
+import time
 
-const byte controlPinL = 6;
-const byte controlPinR = 7;
+# --- Konstanta Fisik Robot (Salin dari skrip asli Anda) ---
+TICKS_PER_REVOLUTION = 76.433121 
+WHEEL_RADIUS = 0.15
+#--------------------------------------------------------------------
 
-HB25MotorControl motorControlL(controlPinL);
-HB25MotorControl motorControlR(controlPinR);
+# Variabel global untuk kalkulasi
+last_time_right = None
+last_ticks_right = 0
+last_time_left = None
+last_ticks_left = 0
 
-ros::NodeHandle nh;
+# --- BAGIAN BARU: Variabel untuk Filter ---
+# Faktor penghalusan (alpha). Semakin kecil, semakin halus. 0.0 - 1.0
+smoothing_factor = 0.2 
+smoothed_rpm_right = 0.0
+smoothed_rpm_left = 0.0
+# ----------------------------------------
 
-// --- Variabel untuk kontrol kecepatan ---
-int target_left_speed = 0;   // Kecepatan target dari ROS
-int target_right_speed = 0;
-int current_left_speed = 0;  // Kecepatan aktual yang dikirim ke motor
-int current_right_speed = 0;
+# Publisher akan mem-publish data yang sudah dihaluskan
+rpm_right_pub = rospy.Publisher('/rpm/right_wheel_smoothed', Float32, queue_size=10)
+rpm_left_pub = rospy.Publisher('/rpm/left_wheel_smoothed', Float32, queue_size=10)
 
-// --- Variabel untuk timing deselerasi non-blocking ---
-unsigned long lastStopTime = 0;
-// --- BAGIAN KALIBRASI (UBAH NILAI DI SINI) ---
-// Seberapa sering (dalam milidetik) kecepatan diturunkan saat berhenti.
-// Angka lebih kecil = deselerasi lebih halus & lambat.
-const int stop_interval = 10; 
 
-// --- Callback Function ---
-// Hanya menyimpan kecepatan target dari ROS, tidak ada logika gerak di sini.
-void twistCallback(const geometry_msgs::Twist& twist_msg) {
-  int linear_speed = (int)(twist_msg.linear.x * 300);
-  int angular_speed = (int)(twist_msg.angular.z * 300);
-  
-  target_left_speed = linear_speed - angular_speed;
-  target_right_speed = linear_speed + angular_speed;
+def right_ticks_callback(msg):
+    global last_time_right, last_ticks_right, smoothed_rpm_right
 
-  target_left_speed = constrain(target_left_speed, -500, 500);
-  target_right_speed = constrain(target_right_speed, -500, 500);
-}
+    current_time = time.time()
+    current_ticks = msg.data
 
-ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &twistCallback);
+    if last_time_right is not None:
+        delta_time = current_time - last_time_right
+        delta_ticks = current_ticks - last_ticks_right
 
-void setup() {
-  nh.getHardware()->setBaud(115200);
-  nh.initNode();
-  nh.subscribe(sub);
+        if delta_time > 0:
+            # 1. Hitung RPM mentah (yang bergelombang)
+            raw_rpm = (delta_ticks / TICKS_PER_REVOLUTION) / (delta_time / 60.0)
 
-  motorControlL.begin();
-  motorControlR.begin();
-}
+            # 2. Terapkan Exponential Moving Average (EMA) Filter
+            smoothed_rpm_right = (smoothing_factor * raw_rpm) + ((1 - smoothing_factor) * smoothed_rpm_right)
 
-void loop() {
-  // Selalu cek pesan baru dari ROS
-  nh.spinOnce();
+            # 3. Publish RPM yang sudah halus
+            rpm_right_pub.publish(smoothed_rpm_right)
 
-  // --- LOGIKA UTAMA YANG DIPERBAIKI ---
+            rospy.loginfo(f"RPM Right Wheel (Smoothed): {smoothed_rpm_right}")
 
-  // Jika target kecepatan BUKAN 0 (robot diperintahkan untuk bergerak)...
-  if (target_left_speed != 0 || target_right_speed != 0) {
-    // Jalankan perintah secara LANGSUNG, sama seperti program asli Anda.
-    // Ini menjaga responsivitas joystick dan menghilangkan gerakan tersendat.
-    motorControlL.moveAtSpeed(target_left_speed);
-    motorControlR.moveAtSpeed(target_right_speed);
-    
-    // Simpan kecepatan saat ini untuk digunakan saat deselerasi nanti.
-    current_left_speed = target_left_speed;
-    current_right_speed = target_right_speed;
-  } else {
-    // JIKA target kecepatan ADALAH 0 (robot diperintahkan berhenti)...
-    // Jalankan logika deselerasi non-blocking.
-    unsigned long currentTime = millis();
-    if (currentTime - lastStopTime >= stop_interval) {
-      lastStopTime = currentTime;
-      
-      // Turunkan kecepatan kiri menuju 0 secara bertahap
-      if (current_left_speed > 0) current_left_speed--;
-      if (current_left_speed < 0) current_left_speed++;
-      
-      // Turunkan kecepatan kanan menuju 0 secara bertahap
-      if (current_right_speed > 0) current_right_speed--;
-      if (current_right_speed < 0) current_right_speed++;
-      
-      // Kirim kecepatan yang sudah diturunkan ke motor
-      motorControlL.moveAtSpeed(current_left_speed);
-      motorControlR.moveAtSpeed(current_right_speed);
-    }
-  }
-}
+    last_time_right = current_time
+    last_ticks_right = current_ticks
+
+def left_ticks_callback(msg):
+    global last_time_left, last_ticks_left, smoothed_rpm_left
+
+    current_time = time.time()
+    current_ticks = msg.data
+
+    if last_time_left is not None:
+        delta_time = current_time - last_time_left
+        delta_ticks = current_ticks - last_ticks_left
+
+        if delta_time > 0:
+            raw_rpm = (delta_ticks / TICKS_PER_REVOLUTION) / (delta_time / 60.0)
+            smoothed_rpm_left = (smoothing_factor * raw_rpm) + ((1 - smoothing_factor) * smoothed_rpm_left)
+            rpm_left_pub.publish(smoothed_rpm_left)
+            rospy.loginfo(f"RPM Left Wheel (Smoothed): {smoothed_rpm_left}")
+
+    last_time_left = current_time
+    last_ticks_left = current_ticks
+
+if __name__ == '__main__':
+    rospy.init_node('rpm_publisher_node')
+    rospy.Subscriber('right_ticks', Int16, right_ticks_callback)
+    rospy.Subscriber('left_ticks', Int16, left_ticks_callback)
+    rospy.loginfo("RPM Publisher Node with Smoothing Filter is running...")
+    rospy.spin()
