@@ -1,1 +1,94 @@
+//=============================Motor Controll with Dynamic & Smooth Motion===============================
+// Versi Final - Menggunakan millis() non-blocking untuk akselerasi/deselerasi yang mulus dan responsif.
+// Dirancang untuk input joystick yang dinamis dan siap untuk integrasi navigasi.
+//=======================================================================================================
 
+#include <Servo.h>
+#include <HB25MotorControl.h>
+#include <ros.h>
+#include <geometry_msgs/Twist.h>
+
+const byte controlPinL = 6;
+const byte controlPinR = 7;
+
+HB25MotorControl motorControlL(controlPinL);
+HB25MotorControl motorControlR(controlPinR);
+
+ros::NodeHandle nh;
+
+// --- Variabel untuk kontrol kecepatan ---
+int target_left_speed = 0;   // Kecepatan target yang diperintahkan oleh joystick/ROS
+int target_right_speed = 0;
+int current_left_speed = 0;  // Kecepatan aktual yang sedang dikirim ke motor
+int current_right_speed = 0;
+
+// --- Variabel untuk timing non-blocking ---
+unsigned long lastUpdateTime = 0;
+const int update_interval = 10; // Seberapa sering kecepatan diupdate (dalam milidetik). 10ms = 100Hz.
+
+//===============================================================================
+// --- BAGIAN KALIBRASI (UBAH NILAI DI SINI UNTUK MENGATUR "RASA" ROBOT) ---
+//===============================================================================
+// 1. Mengatur kecepatan akselerasi/deselerasi. 
+//    Angka lebih besar = transisi lebih cepat & tajam.
+//    Angka lebih kecil = transisi lebih lambat & halus.
+const int speed_step = 25;
+//===============================================================================
+
+
+// --- Callback Function ---
+// Fungsi ini HANYA menyimpan kecepatan target dari ROS. Sangat cepat dan tidak menghalangi.
+void twistCallback(const geometry_msgs::Twist& twist_msg) {
+  int linear_speed = (int)(twist_msg.linear.x * 300);
+  int angular_speed = (int)(twist_msg.angular.z * 300);
+  
+  // Simpan hasil kalkulasi ke variabel target global
+  target_left_speed = linear_speed - angular_speed;
+  target_right_speed = linear_speed + angular_speed;
+
+  target_left_speed = constrain(target_left_speed, -500, 500);
+  target_right_speed = constrain(target_right_speed, -500, 500);
+}
+
+ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &twistCallback);
+
+void setup() {
+  nh.getHardware()->setBaud(115200);
+  nh.initNode();
+  nh.subscribe(sub);
+
+  motorControlL.begin();
+  motorControlR.begin();
+}
+
+void loop() {
+  // Selalu cek pesan baru dari ROS secepat mungkin
+  nh.spinOnce();
+
+  unsigned long currentTime = millis();
+
+  // Cek apakah sudah waktunya untuk mengupdate siklus PWM
+  if (currentTime - lastUpdateTime >= update_interval) {
+    lastUpdateTime = currentTime; // Reset timer untuk siklus berikutnya
+
+    // --- LOGIKA UTAMA: Secara bertahap gerakkan kecepatan saat ini (current) menuju target ---
+    
+    // Untuk motor kiri
+    if (current_left_speed < target_left_speed) {
+      current_left_speed = min(current_left_speed + speed_step, target_left_speed);
+    } else if (current_left_speed > target_left_speed) {
+      current_left_speed = max(current_left_speed - speed_step, target_left_speed);
+    }
+
+    // Untuk motor kanan
+    if (current_right_speed < target_right_speed) {
+      current_right_speed = min(current_right_speed + speed_step, target_right_speed);
+    } else if (current_right_speed > target_right_speed) {
+      current_right_speed = max(current_right_speed - speed_step, target_right_speed);
+    }
+
+    // Kirim kecepatan yang sudah dihaluskan ke motor
+    motorControlL.moveAtSpeed(current_left_speed);
+    motorControlR.moveAtSpeed(current_right_speed);
+  }
+}
