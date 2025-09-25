@@ -17,3 +17,23 @@ N: Updating from such a repository can't be done securely, and is therefore disa
 N: See apt-secure(8) manpage for repository creation and user configuration details.
 
 sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+
+/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino: In function 'void setup()':
+/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:57:3: error: 'motorControlL' was not declared in this scope
+   motorControlL.begin();
+   ^~~~~~~~~~~~~
+/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:57:3: note: suggested alternative: 'HB25MotorControl'
+   motorControlL.begin();
+   ^~~~~~~~~~~~~
+   HB25MotorControl
+/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:58:3: error: 'motorControlR' was not declared in this scope
+   motorControlR.begin();
+   ^~~~~~~~~~~~~
+/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:58:3: note: suggested alternative: 'HB25MotorControl'
+   motorControlR.begin();
+   ^~~~~~~~~~~~~
+   HB25MotorControl
+
+exit status 1
+
+Compilation error: 'motorControlL' was not declared in this scope
