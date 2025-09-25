@@ -17,23 +17,21 @@ N: Updating from such a repository can't be done securely, and is therefore disa
 N: See apt-secure(8) manpage for repository creation and user configuration details.
 
 sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
-
-/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino: In function 'void setup()':
-/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:57:3: error: 'motorControlL' was not declared in this scope
-   motorControlL.begin();
-   ^~~~~~~~~~~~~
-/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:57:3: note: suggested alternative: 'HB25MotorControl'
-   motorControlL.begin();
-   ^~~~~~~~~~~~~
-   HB25MotorControl
-/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:58:3: error: 'motorControlR' was not declared in this scope
-   motorControlR.begin();
-   ^~~~~~~~~~~~~
-/tmp/.arduinoIDE-unsaved2025825-6005-1ryjwn4.87vm/sketch_sep25c/sketch_sep25c.ino:58:3: note: suggested alternative: 'HB25MotorControl'
-   motorControlR.begin();
-   ^~~~~~~~~~~~~
-   HB25MotorControl
+In file included from /tmp/arduino/sketches/389F309FDA6C11F5F21A2E09A1059B6C/sketch/sketch_sep25a.ino.cpp:1:0:
+/tmp/.arduinoIDE-unsaved2025825-3981-1fhqji7.07ecf/sketch_sep25a/sketch_sep25a.ino: In function 'void loop()':
+/tmp/.arduinoIDE-unsaved2025825-3981-1fhqji7.07ecf/sketch_sep25a/sketch_sep25a.ino:103:102: error: 'step_speed' was not declared in this scope
+       else if (current_left_speed > target_left_speed) current_left_speed = max(current_left_speed - step_speed, target_left_speed);
+                                                                                                      ^
+/home/iascr/.arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/Arduino.h:93:20: note: in definition of macro 'max'
+ #define max(a,b) ((a)>(b)?(a):(b))
+                    ^
+/tmp/.arduinoIDE-unsaved2025825-3981-1fhqji7.07ecf/sketch_sep25a/sketch_sep25a.ino:106:106: error: 'step_speed' was not declared in this scope
+       else if (current_right_speed > target_right_speed) current_right_speed = max(current_right_speed - step_speed, target_right_speed);
+                                                                                                          ^
+/home/iascr/.arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/Arduino.h:93:20: note: in definition of macro 'max'
+ #define max(a,b) ((a)>(b)?(a):(b))
+                    ^
 
 exit status 1
 
-Compilation error: 'motorControlL' was not declared in this scope
+Compilation error: 'step_speed' was not declared in this scope
