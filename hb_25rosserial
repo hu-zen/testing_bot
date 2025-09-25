@@ -1,0 +1,48 @@
+//=============================Motor Controll=====================================
+#include <Servo.h>
+#include <HB25MotorControl.h>
+#include <ros.h>
+#include <geometry_msgs/Twist.h>
+
+const byte controlPinL = 6;  // Pin for left motor
+const byte controlPinR = 7;  // Pin for right motor
+
+HB25MotorControl motorControlL(controlPinL);
+HB25MotorControl motorControlR(controlPinR);
+
+ros::NodeHandle nh;
+
+void twistCallback(const geometry_msgs::Twist& twist_msg) {
+  int linear_speed = (int)(twist_msg.linear.x * 300);    // Convert m/s to cm/s
+  int angular_speed = (int)(twist_msg.angular.z * 300);  // Convert rad/s to deg/s
+  int left_speed = linear_speed - angular_speed;
+  int right_speed = linear_speed + angular_speed;  // Subtract 100 from right_speed
+
+  // Constrain motor speeds to the range -500 to 500
+  left_speed = constrain(left_speed, -500, 500);
+  right_speed = constrain(right_speed, -500, 500);
+
+  // Move the motors at the calculated speeds
+  motorControlL.moveAtSpeed(left_speed);
+  motorControlR.moveAtSpeed(right_speed);
+}
+
+
+ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &twistCallback);
+// Set up ROS subscriber to the velocity command
+ros::Subscriber<geometry_msgs::Twist> subCmdVel("cmd_vel", &twistCallback);
+//================================================================================
+
+
+void setup() {
+  nh.getHardware()->setBaud(115200);
+  nh.initNode();
+  nh.subscribe(subCmdVel);
+
+  motorControlL.begin();
+  motorControlR.begin();
+}
+
+void loop() {
+  nh.spinOnce();
+}
