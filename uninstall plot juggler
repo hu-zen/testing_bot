@@ -15,3 +15,5 @@ W: GPG error: http://packages.ros.org/ros/ubuntu focal InRelease: The following 
 E: The repository 'http://packages.ros.org/ros/ubuntu focal InRelease' is not signed.
 N: Updating from such a repository can't be done securely, and is therefore disabled by default.
 N: See apt-secure(8) manpage for repository creation and user configuration details.
+
+sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
