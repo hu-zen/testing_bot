@@ -1,0 +1,135 @@
+rostopic pub -1 /motor_controller/set_mode std_msgs/Bool "data: true"
+rostopic pub -1 /motor_controller/set_mode std_msgs/Bool "data: false"  
+//=======================================================================================================
+// PROGRAM KONTROL MOTOR DINAMIS UNTUK PENELITIAN (VERSI SOFTWARE SWITCH)
+// Menggabungkan dua metode kontrol:
+// 1. Kontrol Langsung (hb25_rosserial.ino)
+// 2. Kontrol Halus dengan Akselerasi (control_pwm.ino)
+//
+// Pemilihan mode dilakukan dengan mem-publish pesan ke topik ROS: /motor_controller/set_mode
+// - Menerima std_msgs/Bool 'true' -> Mode Kontrol Halus AKTIF
+// - Menerima std_msgs/Bool 'false' -> Mode Kontrol Langsung AKTIF
+//=======================================================================================================
+
+#include <Servo.h>
+#include <HB25MotorControl.h>
+#include <ros.h>
+#include <geometry_msgs/Twist.h>
+#include <std_msgs/Bool.h> // Header untuk pesan boolean
+
+// --- Konfigurasi Pin ---
+const byte controlPinL = 6;
+const byte controlPinR = 7;
+
+HB25MotorControl motorControlL(controlPinL);
+HB25MotorControl motorControlR(controlPinR);
+
+ros::NodeHandle nh;
+
+// --- Variabel untuk Mode Kontrol Halus ---
+int target_left_speed = 0;
+int target_right_speed = 0;
+int current_left_speed = 0;
+int current_right_speed = 0;
+unsigned long lastUpdateTime = 0;
+const int update_interval = 10; // 100Hz update rate
+const int speed_step = 2;       // Kecepatan akselerasi
+
+// --- Variabel status mode, default ke Mode Langsung ---
+bool isSmoothMode = false;
+
+//===============================================================================
+// --- Callback Function untuk Kontrol Kecepatan ---
+//===============================================================================
+void twistCallback(const geometry_msgs::Twist& twist_msg) {
+  // Kalkulasi kecepatan dasar dari pesan Twist
+  int linear_speed = (int)(twist_msg.linear.x * 300);
+  int angular_speed = (int)(twist_msg.angular.z * 300);
+
+  int calculated_left_speed = linear_speed - angular_speed;
+  int calculated_right_speed = linear_speed + angular_speed;
+
+  calculated_left_speed = constrain(calculated_left_speed, -500, 500);
+  calculated_right_speed = constrain(calculated_right_speed, -500, 500);
+
+  if (isSmoothMode) {
+    // MODE HALUS: Simpan kecepatan target.
+    target_left_speed = calculated_left_speed;
+    target_right_speed = calculated_right_speed;
+  } else {
+    // MODE LANGSUNG: Langsung kirim perintah ke motor.
+    motorControlL.moveAtSpeed(calculated_left_speed);
+    motorControlR.moveAtSpeed(calculated_right_speed);
+    // Juga set current speed agar transisi ke mode halus tidak menyentak
+    current_left_speed = calculated_left_speed;
+    current_right_speed = calculated_right_speed;
+  }
+}
+
+//===============================================================================
+// --- Callback Function BARU untuk Pemilihan Mode ---
+//===============================================================================
+void modeCallback(const std_msgs::Bool& msg) {
+  isSmoothMode = msg.data;
+  
+  // Jika beralih ke mode langsung, pastikan motor berhenti sejenak untuk menghindari sentakan
+  if (!isSmoothMode) {
+      target_left_speed = 0;
+      target_right_speed = 0;
+      current_left_speed = 0;
+      current_right_speed = 0;
+      motorControlL.moveAtSpeed(0);
+      motorControlR.moveAtSpeed(0);
+  }
+}
+
+// Deklarasi Subscriber untuk kedua topik
+ros::Subscriber<geometry_msgs::Twist> sub_twist("cmd_vel", &twistCallback);
+ros::Subscriber<std_msgs/Bool> sub_mode("/motor_controller/set_mode", &modeCallback);
+
+//===============================================================================
+// --- Setup ---
+//===============================================================================
+void setup() {
+  // Inisialisasi ROS
+  nh.getHardware()->setBaud(115200);
+  nh.initNode();
+  
+  // Langganan kedua topik
+  nh.subscribe(sub_twist);
+  nh.subscribe(sub_mode);
+
+  // Inisialisasi motor
+  motorControlL.begin();
+  motorControlR.begin();
+}
+
+//===============================================================================
+// --- Loop Utama ---
+//===============================================================================
+void loop() {
+  nh.spinOnce(); // Cek pesan masuk untuk KEDUA subscriber
+
+  // Hanya jalankan logika smoothing jika mode halus aktif
+  if (isSmoothMode) {
+    unsigned long currentTime = millis();
+    if (currentTime - lastUpdateTime >= update_interval) {
+      lastUpdateTime = currentTime;
+
+      // Logika akselerasi/deselerasi bertahap (dari control_pwm.ino)
+      if (current_left_speed < target_left_speed) {
+        current_left_speed = min(current_left_speed + speed_step, target_left_speed);
+      } else if (current_left_speed > target_left_speed) {
+        current_left_speed = max(current_left_speed - speed_step, target_left_speed);
+      }
+      if (current_right_speed < target_right_speed) {
+        current_right_speed = min(current_right_speed + speed_step, target_right_speed);
+      } else if (current_right_speed > target_right_speed) {
+        current_right_speed = max(current_right_speed - speed_step, target_right_speed);
+      }
+
+      motorControlL.moveAtSpeed(current_left_speed);
+      motorControlR.moveAtSpeed(current_right_speed);
+    }
+  }
+}
