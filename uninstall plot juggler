@@ -35,3 +35,7 @@ In file included from /tmp/arduino/sketches/389F309FDA6C11F5F21A2E09A1059B6C/ske
 exit status 1
 
 Compilation error: 'step_speed' was not declared in this scope
+
+[ERROR] [1758795424.212735]: Unable to sync with device; possible link problem or link software version mismatch such as hydro rosserial_python with groovy Arduino
+[ERROR] [1758795439.219184]: Unable to sync with device; possible link problem or link software version mismatch such as hydro rosserial_python with groovy Arduino
+
