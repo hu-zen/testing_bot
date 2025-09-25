@@ -100,10 +100,10 @@ void loop() {
       lastUpdateTime = currentTime;
       
       if (current_left_speed < target_left_speed) current_left_speed = min(current_left_speed + speed_step, target_left_speed);
-      else if (current_left_speed > target_left_speed) current_left_speed = max(current_left_speed - speed_step, target_left_speed);
+      else if (current_left_speed > target_left_speed) current_left_speed = max(current_left_speed - step_speed, target_left_speed);
       
       if (current_right_speed < target_right_speed) current_right_speed = min(current_right_speed + speed_step, target_right_speed);
-      else if (current_right_speed > target_right_speed) current_right_speed = max(current_right_speed - speed_step, target_right_speed);
+      else if (current_right_speed > target_right_speed) current_right_speed = max(current_right_speed - step_speed, target_right_speed);
       
       motorControlL.moveAtSpeed(current_left_speed);
       motorControlR.moveAtSpeed(current_right_speed);
