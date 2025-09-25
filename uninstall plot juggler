@@ -1,2 +1,17 @@
 sudo apt-get remove ros-noetic-plotjuggler
 sudo apt-get autoremove
+
+sudo apt-get update
+Hit:1 https://linux.teamviewer.com/deb stable InRelease                        
+Hit:2 http://us.archive.ubuntu.com/ubuntu focal InRelease                      
+Get:3 http://packages.ros.org/ros/ubuntu focal InRelease [4.679 B]
+Hit:4 http://us.archive.ubuntu.com/ubuntu focal-updates InRelease
+Err:3 http://packages.ros.org/ros/ubuntu focal InRelease
+  The following signatures were invalid: EXPKEYSIG F42ED6FBAB17C654 Open Robotics <info@osrfoundation.org>
+Hit:5 http://us.archive.ubuntu.com/ubuntu focal-backports InRelease
+Hit:6 http://us.archive.ubuntu.com/ubuntu focal-security InRelease
+Reading package lists... Done
+W: GPG error: http://packages.ros.org/ros/ubuntu focal InRelease: The following signatures were invalid: EXPKEYSIG F42ED6FBAB17C654 Open Robotics <info@osrfoundation.org>
+E: The repository 'http://packages.ros.org/ros/ubuntu focal InRelease' is not signed.
+N: Updating from such a repository can't be done securely, and is therefore disabled by default.
+N: See apt-secure(8) manpage for repository creation and user configuration details.
