@@ -1,5 +1,22 @@
 rostopic pub -1 /motor_controller/set_mode std_msgs/Bool "data: true"
 rostopic pub -1 /motor_controller/set_mode std_msgs/Bool "data: false"  
+/tmp/.arduinoIDE-unsaved2025826-6224-1nji1m2.kykn/sketch_sep26a/sketch_sep26a.ino:86:30: error: template argument 1 is invalid
+ ros::Subscriber<std_msgs/Bool> sub_mode("/motor_controller/set_mode", &modeCallback);
+                              ^
+/tmp/.arduinoIDE-unsaved2025826-6224-1nji1m2.kykn/sketch_sep26a/sketch_sep26a.ino: In function 'void setup()':
+/tmp/.arduinoIDE-unsaved2025826-6224-1nji1m2.kykn/sketch_sep26a/sketch_sep26a.ino:98:24: error: no matching function for call to 'ros::NodeHandle_<ArduinoHardware, 25, 25, 280, 280>::subscribe(int&)'
+   nh.subscribe(sub_mode);
+                        ^
+In file included from /home/iascr/Arduino/libraries/ros_lib/ros.h:38:0,
+                 from /tmp/.arduinoIDE-unsaved2025826-6224-1nji1m2.kykn/sketch_sep26a/sketch_sep26a.ino:14:
+/home/iascr/Arduino/libraries/ros_lib/ros/node_handle.h:406:8: note: candidate: bool ros::NodeHandle_<Hardware, MAX_SUBSCRIBERS, MAX_PUBLISHERS, INPUT_SIZE, OUTPUT_SIZE>::subscribe(ros::Subscriber_&) [with Hardware = ArduinoHardware; int MAX_SUBSCRIBERS = 25; int MAX_PUBLISHERS = 25; int INPUT_SIZE = 280; int OUTPUT_SIZE = 280]
+   bool subscribe(Subscriber_& s)
+        ^~~~~~~~~
+/home/iascr/Arduino/libraries/ros_lib/ros/node_handle.h:406:8: note:   no known conversion for argument 1 from 'int' to 'ros::Subscriber_&'
+
+exit status 1
+
+Compilation error: template argument 1 is invalid
 //=======================================================================================================
 // PROGRAM KONTROL MOTOR DINAMIS UNTUK PENELITIAN (VERSI SOFTWARE SWITCH)
 // Menggabungkan dua metode kontrol:
