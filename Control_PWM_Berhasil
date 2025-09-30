@@ -1,8 +1,3 @@
-//=============================Motor Controll with Dynamic & Smooth Motion===============================
-// Versi Final - Menggunakan millis() non-blocking untuk akselerasi/deselerasi yang mulus dan responsif.
-// Dirancang untuk input joystick yang dinamis dan siap untuk integrasi navigasi.
-//=======================================================================================================
-
 #include <Servo.h>
 #include <HB25MotorControl.h>
 #include <ros.h>
@@ -22,22 +17,11 @@ int target_right_speed = 0;
 int current_left_speed = 0;  // Kecepatan aktual yang sedang dikirim ke motor
 int current_right_speed = 0;
 
-// --- Variabel untuk timing non-blocking ---
 unsigned long lastUpdateTime = 0;
 const int update_interval = 10; // Seberapa sering kecepatan diupdate (dalam milidetik). 10ms = 100Hz.
 
-//===============================================================================
-// --- BAGIAN KALIBRASI (UBAH NILAI DI SINI UNTUK MENGATUR "RASA" ROBOT) ---
-//===============================================================================
-// 1. Mengatur kecepatan akselerasi/deselerasi. 
-//    Angka lebih besar = transisi lebih cepat & tajam.
-//    Angka lebih kecil = transisi lebih lambat & halus.
 const int speed_step = 2;
-//===============================================================================
 
-
-// --- Callback Function ---
-// Fungsi ini HANYA menyimpan kecepatan target dari ROS. Sangat cepat dan tidak menghalangi.
 void twistCallback(const geometry_msgs::Twist& twist_msg) {
   int linear_speed = (int)(twist_msg.linear.x * 300);
   int angular_speed = (int)(twist_msg.angular.z * 300);
