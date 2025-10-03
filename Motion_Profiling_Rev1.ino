@@ -1,10 +1,10 @@
 //=======================================================================================================
-// KONTROL MOTOR DENGAN MOTION PROFILING VERSI FINAL (DENGAN CMD_VEL TIMEOUT)
+// KONTROL MOTOR DENGAN MOTION PROFILING VERSI INTEGER (FINAL & STABIL)
 //
 // Penulis: [Nama Anda]
-// Deskripsi: Versi ini menambahkan mekanisme timeout untuk memastikan robot berhenti
-//            ketika tidak ada perintah baru yang diterima. Ini mengatasi masalah robot
-//            yang terus bergerak setelah joystick dilepas.
+// Deskripsi: Menggabungkan keandalan program integer sebelumnya dengan metodologi motion profiling.
+//            Menggunakan matematika integer sepenuhnya untuk menghindari eror floating-point dan
+//            memastikan robot berhenti dengan sempurna. Dilengkapi dengan timeout /cmd_vel.
 //=======================================================================================================
 
 #include <Servo.h>
@@ -20,29 +20,27 @@ HB25MotorControl motorControlR(controlPinR);
 
 ros::NodeHandle nh;
 
-// --- Variabel Target & Aktual ---
+// --- Variabel Target & Aktual (semua integer) ---
 int target_left_speed = 0;
 int target_right_speed = 0;
-float current_left_speed = 0.0;
-float current_right_speed = 0.0;
+int current_left_speed = 0;
+int current_right_speed = 0;
 
-// --- Parameter Motion Profiling (Dapat Disesuaikan untuk Penelitian) ---
-const float MAX_ACCELERATION = 400.0; // Satuan: PWM per detik.
-const float MAX_SPEED = 500.0;
+// --- Parameter Motion Profiling (Integer) ---
+const int MAX_ACCELERATION = 400; // Satuan: PWM per detik.
+const int MAX_SPEED = 500;
 
 // --- Variabel Waktu ---
 unsigned long lastUpdateTime = 0;
-unsigned long lastCmdVelTime = 0; // Waktu terakhir menerima perintah /cmd_vel
+unsigned long lastCmdVelTime = 0;
 
-// --- Parameter Timeout (PENTING) ---
-// Jika tidak ada perintah baru selama 500ms, anggap perintahnya adalah berhenti.
+// --- Parameter Timeout ---
 const int CMD_VEL_TIMEOUT = 500; // dalam milidetik
 
 //===============================================================================
 // --- Callback Function ---
 //===============================================================================
 void twistCallback(const geometry_msgs::Twist& twist_msg) {
-  // Catat waktu setiap kali menerima pesan baru
   lastCmdVelTime = millis();
 
   int linear_speed = (int)(twist_msg.linear.x * 300);
@@ -68,8 +66,7 @@ void setup() {
   motorControlL.begin();
   motorControlR.begin();
   
-  // Inisialisasi timer dengan presisi yang sesuai
-  lastUpdateTime = micros(); 
+  lastUpdateTime = micros();
   lastCmdVelTime = millis();
 }
 
@@ -79,37 +76,57 @@ void setup() {
 void loop() {
   nh.spinOnce();
 
-  unsigned long currentTimeMs = millis();
-  
-  // --- MEKANISME TIMEOUT ---
-  // Jika sudah terlalu lama tidak menerima perintah, paksa target kecepatan menjadi nol.
-  if (currentTimeMs - lastCmdVelTime > CMD_VEL_TIMEOUT) {
+  // --- Mekanisme Timeout ---
+  if (millis() - lastCmdVelTime > CMD_VEL_TIMEOUT) {
     target_left_speed = 0;
     target_right_speed = 0;
   }
 
-  // --- LOGIKA UTAMA: MOTION PROFILING ---
-  unsigned long currentTimeMicros = micros();
-  float elapsedTime = (currentTimeMicros - lastUpdateTime) / 1000000.0; // Waktu dalam detik
-  lastUpdateTime = currentTimeMicros;
+  // --- LOGIKA UTAMA: MOTION PROFILING DENGAN INTEGER ---
+  unsigned long currentTime = micros();
+  unsigned long elapsedTime = currentTime - lastUpdateTime;
 
-  float max_speed_change = MAX_ACCELERATION * elapsedTime;
+  // Lakukan update hanya pada interval yang cukup untuk menghindari perhitungan yang tidak perlu
+  // 10000 microseconds = 10ms = 100Hz
+  if (elapsedTime >= 10000) {
+    lastUpdateTime = currentTime;
+    
+    // Konversi elapsedTime ke detik (sebagai float hanya untuk kalkulasi ini)
+    float elapsedTimeSec = elapsedTime / 1000000.0;
+    
+    // Hitung perubahan kecepatan maksimum yang diizinkan dalam interval ini
+    int max_speed_change = (int)(MAX_ACCELERATION * elapsedTimeSec);
+    
+    // Pastikan perubahan minimal 1 jika akselerasi diinginkan
+    if (max_speed_change == 0) max_speed_change = 1;
 
-  // Proses untuk Motor Kiri
-  float error_left = target_left_speed - current_left_speed;
-  float change_left = constrain(error_left, -max_speed_change, max_speed_change);
-  current_left_speed += change_left;
+    // --- Proses untuk Motor Kiri ---
+    if (current_left_speed < target_left_speed) {
+      current_left_speed += max_speed_change;
+      if (current_left_speed > target_left_speed) {
+        current_left_speed = target_left_speed;
+      }
+    } else if (current_left_speed > target_left_speed) {
+      current_left_speed -= max_speed_change;
+      if (current_left_speed < target_left_speed) {
+        current_left_speed = target_left_speed;
+      }
+    }
 
-  // Proses untuk Motor Kanan
-  float error_right = target_right_speed - current_right_speed;
-  float change_right = constrain(error_right, -max_speed_change, max_speed_change);
-  current_right_speed += change_right;
-  
-  // Deadband: jika kecepatan sangat kecil, anggap nol untuk mencegah "creep"
-  if (abs(current_left_speed) < 1.0) current_left_speed = 0.0;
-  if (abs(current_right_speed) < 1.0) current_right_speed = 0.0;
+    // --- Proses untuk Motor Kanan ---
+    if (current_right_speed < target_right_speed) {
+      current_right_speed += max_speed_change;
+      if (current_right_speed > target_right_speed) {
+        current_right_speed = target_right_speed;
+      }
+    } else if (current_right_speed > target_right_speed) {
+      current_right_speed -= max_speed_change;
+      if (current_right_speed < target_right_speed) {
+        current_right_speed = target_right_speed;
+      }
+    }
 
-  // Kirim kecepatan yang sudah diprofilkan ke motor
-  motorControlL.moveAtSpeed((int)current_left_speed);
-  motorControlR.moveAtSpeed((int)current_right_speed);
+    motorControlL.moveAtSpeed(current_left_speed);
+    motorControlR.moveAtSpeed(current_right_speed);
+  }
 }
