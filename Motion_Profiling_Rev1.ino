@@ -10,7 +10,23 @@
 // - Kirim angka 1 -> Mode 1: Motion Profiling (Gerak Halus & Terkontrol)
 // - Kirim angka 0 -> Mode 0: Kontrol Langsung (Gerak Cepat & Responsif)
 //=======================================================================================================
+/home/iascr/Arduino/Combine_Mode_Motor/Combine_Mode_Motor.ino:84:30: error: template argument 1 is invalid
+ ros::Subscriber<std_msgs/Int8> sub_mode("/set_mode", &modeCallback);
+                              ^
+/home/iascr/Arduino/Combine_Mode_Motor/Combine_Mode_Motor.ino: In function 'void setup()':
+/home/iascr/Arduino/Combine_Mode_Motor/Combine_Mode_Motor.ino:93:24: error: no matching function for call to 'ros::NodeHandle_<ArduinoHardware, 25, 25, 280, 280>::subscribe(int&)'
+   nh.subscribe(sub_mode);
+                        ^
+In file included from /home/iascr/Arduino/libraries/ros_lib/ros.h:38:0,
+                 from /home/iascr/Arduino/Combine_Mode_Motor/Combine_Mode_Motor.ino:16:
+/home/iascr/Arduino/libraries/ros_lib/ros/node_handle.h:406:8: note: candidate: bool ros::NodeHandle_<Hardware, MAX_SUBSCRIBERS, MAX_PUBLISHERS, INPUT_SIZE, OUTPUT_SIZE>::subscribe(ros::Subscriber_&) [with Hardware = ArduinoHardware; int MAX_SUBSCRIBERS = 25; int MAX_PUBLISHERS = 25; int INPUT_SIZE = 280; int OUTPUT_SIZE = 280]
+   bool subscribe(Subscriber_& s)
+        ^~~~~~~~~
+/home/iascr/Arduino/libraries/ros_lib/ros/node_handle.h:406:8: note:   no known conversion for argument 1 from 'int' to 'ros::Subscriber_&'
 
+exit status 1
+
+Compilation error: template argument 1 is invalid
 #include <Servo.h>
 #include <HB25MotorControl.h>
 #include <ros.h>
