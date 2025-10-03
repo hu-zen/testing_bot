@@ -128,4 +128,7 @@ void loop() {
       }
 
       motorControlL.moveAtSpeed(current_left_speed);
-      motorControlR.move
+      motorControlR.moveAtSpeed(current_right_speed);
+    }
+  }
+}
