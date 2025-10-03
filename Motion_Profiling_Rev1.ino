@@ -1,13 +1,14 @@
 //=======================================================================================================
-// PROGRAM KONTROL MOTOR UNTUK PENELITIAN SKRIPSI (DUAL MODE: DIRECT vs PROFILING)
+// PROGRAM KONTROL MOTOR UNTUK PENELITIAN SKRIPSI (DUAL MODE: DIRECT vs PROFILING STABIL)
 //
 // FITUR:
-// 1. Beralih antara dua metode kontrol yang andal menggunakan matematika integer.
-// 2. Mode 0: Kontrol Langsung (hb25_rosserial) untuk baseline perbandingan.
-// 3. Mode 1: Motion Profiling (Integer & Stabil) untuk metode yang diusulkan.
+// 1. Menggunakan tipe pesan std_msgs/Int8 yang sudah terbukti bekerja di environment Anda.
+// 2. Mode 0: Kontrol Langsung (hb25_rosserial) sebagai baseline.
+// 3. Mode 1: Motion Profiling versi Integer yang stabil dan responsif untuk joystick.
+// 4. TIDAK menggunakan timeout yang menyebabkan gerakan tersendak.
 //
-// ATURAN MODE (via topik /set_mode, tipe std_msgs/Int8):
-// - Kirim angka 1 -> Mode 1: Motion Profiling (Gerak Halus & Terkontrol)
+// ATURAN MODE (via topik /set_mode):
+// - Kirim angka 1 -> Mode 1: Motion Profiling (Gerak Halus & Stabil)
 // - Kirim angka 0 -> Mode 0: Kontrol Langsung (Gerak Cepat & Responsif)
 //=======================================================================================================
 
@@ -81,7 +82,7 @@ void modeCallback(const std_msgs::Int8& msg) {
 
 // --- Deklarasi Subscriber ---
 ros::Subscriber<geometry_msgs::Twist> sub_twist("cmd_vel", &twistCallback);
-ros::Subscriber<std_msgs/Int8> sub_mode("/set_mode", &modeCallback);
+ros::Subscriber<std_msgs::Int8> sub_mode("/set_mode", &modeCallback);
 
 //===============================================================================
 // --- Setup ---
