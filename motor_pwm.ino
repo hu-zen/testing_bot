@@ -1,5 +1,5 @@
-rostopic pub -1 /set_mode std_msgs/Int8 "data: 1"
-rostopic pub -1 /set_mode std_msgs/Int8 "data: 0"
+//rostopic pub -1 /set_mode std_msgs/Int8 "data: 1"
+//rostopic pub -1 /set_mode std_msgs/Int8 "data: 0"
 //=======================================================================================================
 // PROGRAM KONTROL MOTOR VERSI FINAL (MENGGUNAKAN std_msgs::Int8)
 //
